@@ -11,13 +11,26 @@
 (module with-contracts racket/base
   (require racket/pretty
            racket/contract
+           racket/match
+           racket/format
            syntax/parse
            fancy-app)
   (provide (contract-out [occurs-in? (-> syntax? identifier? boolean?)]
                          [path-string->string (-> (or/c string? path?) string?)]
                          [stx->string (-> syntax? string?)]
                          [stx-flatten-id (-> syntax? (listof identifier?))]
-                         [free-id-in? (-> identifier? syntax? any/c)]))
+                         [free-id-in? (-> identifier? syntax? any/c)]
+                         [current-module-path (parameter/c any/c)]
+                         [identifier-binding* (-> identifier?
+                                                  (or/c #f
+                                                        (listof
+                                                         (cons/c symbol?
+                                                                 (or/c 'kernel
+                                                                       (cons/c path-string?
+                                                                               (listof symbol?)))))))]
+                         [mpi->path (-> module-path-index?
+                                        (or/c 'kernel
+                                              (cons/c path-string? (listof symbol?))))]))
 
   (define (occurs-in? stx sym)
     (syntax-parse stx
@@ -40,7 +53,41 @@
 
   (define (free-id-in? x xs)
     (memf ((free-identifier=? _ x) (stx-flatten-id xs))))
-  )
+
+  (define current-module-path (make-parameter #f))
+
+  ;; BEGIN SECTION from
+  ;; https://github.com/greghendershott/racket-mode/blob/master/racket/find.rkt
+
+  ;; Distill identifier-binding to what we need. Unfortunately it can't
+  ;; report the definition id in the case of a contract-out and a
+  ;; rename-out, both. For `(provide (contract-out [rename orig new
+  ;; contract]))` it reports (1) the contract-wrapper as the id, and (2)
+  ;; `new` as the nominal-id -- but NOT (3) `orig`. Instead the caller
+  ;; will need try using `renaming-provide`.
+  (define (identifier-binding* id)
+    (define sym->id namespace-symbol->identifier)
+    (match (identifier-binding id)
+      [(list source-mpi         source-id
+             nominal-source-mpi nominal-source-id
+             source-phase import-phase nominal-export-phase)
+       (list (cons source-id (mpi->path source-mpi))
+             (cons nominal-source-id (mpi->path nominal-source-mpi)))]
+      [_ #f]))
+
+  (define (mpi->path mpi)
+    (define (hash-bang-symbol? v)
+      (and (symbol? v)
+           (regexp-match? #px"^#%" (symbol->string v))))
+    (match (resolved-module-path-name (module-path-index-resolve mpi))
+      [(? hash-bang-symbol?) 'kernel]
+      [(? path-string? path) (list path)]
+      [(? symbol? sym) (list (build-path (current-load-relative-directory)
+                                         (~a sym ".rkt")))]
+      [(list (? path-string? path) (? symbol? subs) ...)
+       (list* path subs)]
+      [(list '|expanded module| (? symbol? subs) ...)
+       (list* (current-module-path) subs)])))
 
 (require 'with-contracts)
 
@@ -99,4 +146,3 @@
         [else (namespace-syntax-introduce
                (datum->syntax #f e))]))
     (base-compiler (transformer stx) immediate-eval?)))
-

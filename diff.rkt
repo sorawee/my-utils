@@ -3,6 +3,10 @@
 (provide (all-defined-out))
 (require racket/set
          racket/file
+         racket/string
+         racket/sequence
+         racket/format
+         racket/list
          racket/function
          racket/match
          racket/system
@@ -14,15 +18,23 @@
   [context 3]
   [column 80])
 
+(define (display-to-file* a path-a)
+  (define result
+    (for/list ([line (string-split (~a a) "\n")])
+      (define seq (string->list line))
+      (for/list ([group (in-slice (current-diff-column) seq)])
+        (list->string group))))
+
+  (display-to-file (string-join (append* result) "\n")
+                   path-a
+                   #:mode 'text
+                   #:exists 'replace))
+
 (define (print-diff a b)
   (define path-a (make-temporary-file))
   (define path-b (make-temporary-file))
-  (display-to-file a path-a
-                   #:mode 'text
-                   #:exists 'replace)
-  (display-to-file b path-b
-                   #:mode 'text
-                   #:exists 'replace)
+  (display-to-file* a path-a)
+  (display-to-file* b path-b)
 
   (match-define
     (list in out _ err proc)

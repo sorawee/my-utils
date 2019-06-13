@@ -1,6 +1,6 @@
 #lang scribble/manual
 @require[@for-label[my-utils
-                    racket/base]]
+                    (except-in racket/base #%app)]]
 
 @title{my-utils}
 @author{sorawee}

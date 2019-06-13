@@ -2,6 +2,7 @@
 
 fancy-app
 threading
+"block.rkt"
 "custom-key.rkt"
 "debug.rkt"
 "define.rkt"
@@ -9,6 +10,7 @@ threading
 "double.rkt"
 "for.rkt"
 "functional.rkt"
+"generator.rkt"
 "let.rkt"
 "macro.rkt"
 "match.rkt"

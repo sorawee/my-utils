@@ -41,12 +41,12 @@
 (define proc-cache (make-hash))
 
 (define-simple-macro (define+provide-lift (~ids id ::
-                                        id
-                                        define-id-types
-                                        define-id-types*
-                                        make-id*
-                                        make-immutable-id*
-                                        make-weak-id*))
+                                                id
+                                                define-id-types
+                                                define-id-types*
+                                                make-id*
+                                                make-immutable-id*
+                                                make-weak-id*))
   (begin
     (provide define-id-types*)
     (define-simple-macro (define-id-types* name:identifier key:expr)
