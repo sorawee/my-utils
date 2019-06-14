@@ -1,6 +1,8 @@
 #lang info
 (define collection "my-utils")
 (define deps '("fancy-app"
+               "kw-make-struct"
+               "threading"
                "loop"
                "reprovide-lang"
                "terminal-color"
