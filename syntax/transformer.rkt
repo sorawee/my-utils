@@ -63,10 +63,10 @@
          (keep-lambda-properties stx (lps #'(form.body ...)))]
         [(case-lambda form:lambda-body-form ...)
          (keep-lambda-properties stx (lps #'({~@ form.body ...} ...)))]
+        [({~var _ (leaf-form phase)} ~! . _) stx]
         [({~var _ (let-values-form phase)} . form:let-values-body-form)
          (lps #'(form.rhs ... form.body ...))]
-        [({~var _ (leaf-form phase)} ~! . _) stx]
-        [({~var _ (compound-form phase)} ~! e ...) (lps #'(e ...))]
+        [({~var _ (compound-form phase)} ~! . body) (lps #'body)]
         [_ (error 'transform "unrecognized expression form: ~.s at phase ~a"
                   (syntax->datum stx) phase)]))))
 

@@ -21,13 +21,10 @@
            (and (not (empty? strict-candidates)) (< (random) treshold)))
        ;; we are picking strict candidates
        (define pick (random (apply + (map fst strict-candidates))))
-       (define picked-candidate
-         (findf (λ (candidate)
-                  (begin0 (< pick (fst candidate))
-                    (change! pick (- _ (fst candidate))))) candidates))
-       picked-candidate]
-      [else
-       (list-ref non-strict-candidates (random (length non-strict-candidates)))]))
+       (findf (λ (candidate)
+                (begin0 (< pick (fst candidate))
+                  (change! pick (- _ (fst candidate))))) strict-candidates)]
+      [else (list-ref non-strict-candidates (random (length non-strict-candidates)))]))
   (snd candidate))
 
 (define (pick-in-list/inverted xs
@@ -41,3 +38,6 @@
                            (define m (fst x))
                            (double (and m (- max-val m)) (snd x))))
   (snd (pick-in-list new-candidates #:treshold treshold #:measure fst)))
+
+(define (metroprolis-hastlings-accept? cost new-cost)
+  (min 1 (exp (* 2 (- cost new-cost)))))
