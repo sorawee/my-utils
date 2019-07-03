@@ -15,21 +15,21 @@
   [fg 'red]
   [bg 'default])
 
-(define (debug x
-               #:msg [msg #f]
-               #:fg [fg (current-debug-fg)]
-               #:bg [bg (current-debug-bg)])
+(define (debug/core x msg-backup
+                    #:msg [msg #f]
+                    #:fg [fg (current-debug-fg)]
+                    #:bg [bg (current-debug-bg)])
   (displayln-color
    (format "~a: ~a"
-           (or msg "Debug")
+           (or msg msg-backup)
            (cond
              [(syntax? x) (~a "<pretty-syntax: " (pretty-format (syntax->datum x)) ">")]
              [else x]))
    #:fg fg #:bg bg)
   x)
 
-(define-simple-macro (debug* x opt ...)
-  (debug x #:msg 'x opt ...))
+(define-simple-macro (debug x opt ...)
+  (debug/core x 'x opt ...))
 
 (define (assert x #:msg [msg #f] . ctx)
   (when (not x)
