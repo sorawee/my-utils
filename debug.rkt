@@ -3,10 +3,10 @@
 (provide (all-defined-out))
 (require racket/format
          racket/pretty
-         syntax/to-string
          syntax/parse/define
          terminal-color
          "./define.rkt"
+         "./syntax/pretty-syntax-format.rkt"
          (for-syntax racket/base))
 
 (define-multiple
@@ -23,12 +23,12 @@
    (format "~a: ~a"
            (or msg msg-backup)
            (cond
-             [(syntax? x) (~a "<pretty-syntax: " (pretty-format (syntax->datum x)) ">")]
-             [else x]))
+             [(syntax? x) (pretty-syntax-format x)]
+             [else (pretty-format x)]))
    #:fg fg #:bg bg)
   x)
 
-(define-simple-macro (debug x opt ...)
+(define-simple-macro (debug: x opt ...)
   (debug/core x 'x opt ...))
 
 (define (assert x #:msg [msg #f] . ctx)
