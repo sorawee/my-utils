@@ -1,7 +1,8 @@
 #lang racket/base
 
-(provide define-multiple)
+(provide define-multiple define/who)
 (require syntax/parse/define
+         racket/stxparam
          (for-syntax racket/base
                      racket/syntax))
 
@@ -26,3 +27,11 @@
   [(_ () [head body ...] ...) #'(begin (define head body ...) ...)]
   [(_ (hd tl ...) [head body ...] ...)
    #'(define-multiple/core [tl ...] [head (hd body ...)] ...)])
+
+(define-syntax-parameter who (λ (stx) (raise-syntax-error (syntax-e stx) "not allowed")))
+
+(define-simple-macro (define/who (id:id . args) . body)
+  (define id
+    (let ([the-id 'id])
+      (syntax-parameterize ([who (make-rename-transformer #'the-id)])
+        (λ args . body)))))

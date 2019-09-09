@@ -11,26 +11,50 @@
 (module with-contracts racket/base
   (require racket/pretty
            racket/contract
+           racket/list
+           racket/function
            racket/match
            racket/format
            syntax/parse
-           fancy-app)
-  (provide (contract-out [occurs-in? (-> syntax? identifier? boolean?)]
-                         [path-string->string (-> (or/c string? path?) string?)]
-                         [stx->string (-> syntax? string?)]
-                         [stx-flatten-id (-> syntax? (listof identifier?))]
-                         [free-id-in? (-> identifier? syntax? any/c)]
-                         [current-module-path (parameter/c any/c)]
-                         [identifier-binding* (-> identifier?
-                                                  (or/c #f
-                                                        (listof
-                                                         (cons/c symbol?
-                                                                 (or/c 'kernel
-                                                                       (cons/c path-string?
-                                                                               (listof symbol?)))))))]
-                         [mpi->path (-> module-path-index?
-                                        (or/c 'kernel
-                                              (cons/c path-string? (listof symbol?))))]))
+           "../debug.rkt")
+
+  (define module-path/c (or/c 'kernel (cons/c path-string? (listof symbol?))))
+
+  (provide (contract-out
+            [occurs-in? (-> syntax? identifier? boolean?)]
+            [path-string->string (-> (or/c string? path?) string?)]
+            [stx->string (-> syntax? string?)]
+            [stx-flatten-id (-> syntax? (listof identifier?))]
+            [free-id-in? (-> identifier? syntax? any/c)]
+            [current-module-path (parameter/c any/c)]
+            [identifier-binding*
+             (-> identifier? (or/c #f (listof (cons/c symbol? module-path/c))))]
+            [mpi->path (-> module-path-index? module-path/c)]
+            [syntax->string-path (-> syntax? string?)]
+            [keep-lambda-properties (-> syntax? syntax? syntax?)]
+            [length-improper (-> any/c number?)]
+            [make-adjust-loc (-> exact-nonnegative-integer? (-> syntax? syntax?))]
+            [syntax/prop (-> syntax? syntax? syntax?)]
+            [original-base-line number?]))
+
+  ;; measure the length of an improper list
+  ;; where the last pair counts as one
+  (define (length-improper xs)
+    (cond
+      [(cons? xs) (add1 (length-improper (cdr xs)))]
+      [else 0]))
+
+  (define (keep-lambda-properties orig new)
+    (let ([p (syntax-property orig 'method-arity-error)]
+          [p2 (syntax-property orig 'inferred-name)])
+      (let ([new (if p
+                     (syntax-property new 'method-arity-error p)
+                     new)])
+        (if p2
+            (syntax-property new 'inferred-name p2)
+            new))))
+
+  (define (syntax->string-path stx) (path-string->string (syntax-source stx)))
 
   (define (occurs-in? stx sym)
     (syntax-parse stx
@@ -52,7 +76,8 @@
       [_ '()]))
 
   (define (free-id-in? x xs)
-    (memf ((free-identifier=? _ x) (stx-flatten-id xs))))
+    (memf ((curry free-identifier=? x) (stx-flatten-id xs))))
+
 
   (define current-module-path (make-parameter #f))
 
@@ -77,26 +102,34 @@
 
   (define (mpi->path mpi)
     (define (hash-bang-symbol? v)
-      (and (symbol? v)
-           (regexp-match? #px"^#%" (symbol->string v))))
+      (and (symbol? v) (regexp-match? #px"^#%" (symbol->string v))))
     (match (resolved-module-path-name (module-path-index-resolve mpi))
       [(? hash-bang-symbol?) 'kernel]
       [(? path-string? path) (list path)]
+      [(list '|expanded module| (? symbol? subs) ...)
+       (list* (current-module-path) subs)]
+      ['|expanded module| (list (current-module-path))]
       [(? symbol? sym) (list (build-path (current-load-relative-directory)
                                          (~a sym ".rkt")))]
       [(list (? path-string? path) (? symbol? subs) ...)
-       (list* path subs)]
-      [(list '|expanded module| (? symbol? subs) ...)
-       (list* (current-module-path) subs)])))
+       (list* path subs)]))
+
+  (define (syntax/prop orig stx)
+    (datum->syntax orig (syntax-e stx) orig orig))
+
+  (define original-base-line 1000000000)
+  (define base-line original-base-line)
+
+  (define ((make-adjust-loc i) stx)
+    (datum->syntax
+     stx
+     (syntax-e stx)
+     (list (current-module-path)
+           (begin (set! base-line (add1 base-line)) base-line) i 1 0)
+     stx)))
 
 (require 'with-contracts)
 
-;; measure the length of an improper list
-;; where the last pair counts as one
-(define (length-improper xs)
-  (cond
-    [(cons? xs) (add1 (length-improper (cdr xs)))]
-    [else 0]))
 
 (define current-replacements (make-parameter '()))
 
@@ -128,15 +161,6 @@
                  (λ (x) (diff-k (datum->syntax expr x expr expr)))))]
         [else (same-k)]))))
 
-(define (keep-lambda-properties orig new)
-  (let ([p (syntax-property orig 'method-arity-error)]
-        [p2 (syntax-property orig 'inferred-name)])
-    (let ([new (if p
-                   (syntax-property new 'method-arity-error p)
-                   new)])
-      (if p2
-          (syntax-property new 'inferred-name p2)
-          new))))
 
 (define (make-compiler transformer #:base [base-compiler (current-compile)])
   (λ (e immediate-eval?)
@@ -146,3 +170,4 @@
         [else (namespace-syntax-introduce
                (datum->syntax #f e))]))
     (base-compiler (transformer stx) immediate-eval?)))
+
