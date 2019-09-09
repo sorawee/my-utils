@@ -1,9 +1,11 @@
 #lang racket/base
+
 ;; this finds the free variables of fully-expanded racket expressions
 ;; adapted from code by mflatt
 
 (require syntax/kerncase
          syntax/boundmap
+         racket/sequence
          (for-template racket/base))
 
 (provide free-vars)
@@ -48,9 +50,6 @@
 ;;  given epression. The expression must be fully expanded.
 ;; If `module-bound?` is true, also return module-bound variables.
 (define (free-vars e
-                   [code-insp
-                    (variable-reference->module-declaration-inspector
-                     (#%variable-reference))]
                    #:module-bound? [module-bound? #f])
   (define (submodule-error e)
     (error 'free-vars "submodules not supported: ~a" e))
@@ -58,7 +57,7 @@
   (define bindings (make-bound-identifier-mapping))
   (merge
    (let free-vars ([e e])
-     (kernel-syntax-case (syntax-disarm e code-insp) #f
+     (kernel-syntax-case e #f
        [id
         (identifier? #'id)
         (let ([b (identifier-binding #'id)])
@@ -72,7 +71,12 @@
                  (list #'id)]
                 [else
                  null]))]
-       [(define-values _ e) (free-vars #'e)]
+       [(define-values ids body)
+        (for ([id (in-syntax #'ids)])
+          (bound-identifier-mapping-put! bindings id #t))
+        (begin0 (free-vars #'body)
+          (for ([id (in-syntax #'ids)])
+            (bound-identifier-mapping-put! bindings id #f)))]
        [(#%top . id) null]
        [(quote q) null]
        [(quote-syntax . _) null]

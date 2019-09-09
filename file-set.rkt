@@ -1,15 +1,33 @@
 #lang racket/base
 
-(provide (all-defined-out))
-(require racket/file
-         racket/function)
+(provide make-file-set)
+(require racket/function
+         racket/format
+         "./debug.rkt"
+         racket/file)
 
-(define (make-file-set name)
-  (define path (make-temporary-file (string-append name "~a")))
-  (define (member? datum)
-    (with-input-from-file path
-      (thunk (for/or ([x (in-port)]) (equal? x datum)))))
-  (define (record! datum)
-    (with-output-to-file path #:mode 'text #:exists 'append
-      (thunk (writeln datum))))
-  (values member? record!))
+(define an-executor (make-will-executor))
+(void
+ (thread
+  (thunk
+   (let loop ()
+     (will-execute an-executor)
+     (loop)))))
+
+(define ((executor-proc p) v)
+  (printf "INFO: removing file set ~a\n" p)
+  (delete-file p))
+
+(define (make-file-set [template "rkttmp"])
+  (define p (make-temporary-file (string-append template "~a")))
+  (printf "INFO: creating file set ~a\n" p)
+  (define (reader v)
+    (with-input-from-file p #:mode 'text
+      (thunk (for/or ([v* (in-port)])
+               ;; TODO(Oak): weird bug. Somehow need ~a to make equal things equal
+               (equal? (~a v) (~a v*))))))
+  (define (writer v)
+    (with-output-to-file p #:mode 'text #:exists 'append
+      (thunk (writeln v))))
+  (will-register an-executor reader (executor-proc p))
+  (values reader writer))

@@ -16,7 +16,7 @@
   #:prefix current-diff-
   #:trans (make-parameter)
   [context 3]
-  [column 80])
+  [column 100])
 
 (define (display-to-file* a path-a)
   (define result
@@ -60,6 +60,8 @@
 
   (delete-file path-a)
   (delete-file path-b)
+
+  (proc 'kill)
 
   (for ([line lines] [i (in-naturals)] #:when (set-member? show-set i))
     (when (not (set-member? show-set (sub1 i)))
