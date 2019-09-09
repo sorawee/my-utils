@@ -3,6 +3,7 @@
 (provide (all-defined-out))
 (require racket/stream
          racket/generator
+         racket/sequence
          racket/list)
 
 (module+ test
