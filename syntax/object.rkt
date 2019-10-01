@@ -3,6 +3,7 @@
 (require racket/function
          racket/list
          syntax/parse
+         "../debug.rkt"
          loop)
 
 (provide (all-defined-out)
@@ -161,12 +162,14 @@
                  (λ (x) (diff-k (datum->syntax expr x expr expr)))))]
         [else (same-k)]))))
 
-
-(define (make-compiler transformer #:base [base-compiler (current-compile)])
+(define (make-compiler transformer
+                       #:base [base-compiler (current-compile)]
+                       #:after [after (λ (x . _) x)])
   (λ (e immediate-eval?)
     (define stx
       (cond
         [(syntax? e) e]
         [else (namespace-syntax-introduce
                (datum->syntax #f e))]))
-    (base-compiler (transformer stx) immediate-eval?)))
+    (after (base-compiler (transformer stx) immediate-eval?)
+           (syntax-source stx))))
