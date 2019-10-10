@@ -163,13 +163,11 @@
         [else (same-k)]))))
 
 (define (make-compiler transformer
-                       #:base [base-compiler (current-compile)]
-                       #:after [after (λ (x . _) x)])
+                       #:base [base-compiler (current-compile)])
   (λ (e immediate-eval?)
     (define stx
       (cond
         [(syntax? e) e]
         [else (namespace-syntax-introduce
                (datum->syntax #f e))]))
-    (after (base-compiler (transformer stx) immediate-eval?)
-           (syntax-source stx))))
+    (base-compiler (transformer stx) immediate-eval?)))

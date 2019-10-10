@@ -22,6 +22,7 @@ threading
 "sequence.rkt"
 "struct.rkt"
 "syntax/object.rkt"
+"syntax/free-vars.rkt"
 "syntax/pretty-syntax-format.rkt"
 "syntax/transformer.rkt"
 "values.rkt"
