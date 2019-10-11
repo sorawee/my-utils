@@ -1,10 +1,9 @@
 #lang info
 (define collection "my-utils")
 (define deps '("fancy-app"
-               "kw-make-struct"
-               "threading"
-               "loop"
-               "reprovide-lang"
+               "kw-make-struct-lib"
+               "threading-lib"
+               "reprovide-lang-lib"
                "terminal-color"
                "base"))
 (define build-deps '("scribble-lib" "racket-doc" "rackunit-lib"))
